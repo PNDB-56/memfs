@@ -50,6 +50,7 @@ func reverseSlice[T any](s *[]T) {
 }
 
 // TODO: Mkdir creates a dir in current dir only, It should accept path to create a dir (abs path , relative path)
+// TODO: optimization of childer array to binary tree or trie for easy search
 func (f *Node) Mkdir(name string) (bool, error) {
 	if f != nil {
 		_, ok := f.index[name]

@@ -77,3 +77,32 @@ func (f *Node) Ls() []string {
 	}
 	return dirs
 }
+
+func (f *Node) Cd(path string) *Node {
+	orginalPwd := f
+	subPaths := strings.FieldsFunc(path, func(c rune) bool { return c == '/' })
+	for _, p := range subPaths {
+		if p == "." {
+			f = f
+			continue
+		} else if p == ".." {
+			// go to parent
+			if f.parent != nil {
+				f = f.parent
+			} else {
+				// TODO: improve Error
+				fmt.Printf("Parent Path: %s doesn't exist in %s\n", p, path)
+				return orginalPwd
+			}
+		} else {
+			if addr, ok := f.index[p]; ok {
+				f = addr
+			} else {
+				// TODO: improve Error
+				fmt.Printf("Child Path: %s doesn't exist in %s\n", p, path)
+				return orginalPwd
+			}
+		}
+	}
+	return f
+}

@@ -11,6 +11,14 @@ func main() {
 	pwd.Mkdir("test2")
 	// testSetup1(pwd)
 	log(pwd.Ls())
+
+	pwd = pwd.Cd("./test1")
+	log(pwd.Pwd())
+	pwd = pwd.Cd("../test2")
+	log(pwd.Pwd())
+	pwd = pwd.Cd(".././test2/../test1/../..")
+	log(pwd.Pwd())
+
 }
 
 func testSetup(ctx *Node) {

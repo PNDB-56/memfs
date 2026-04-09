@@ -49,6 +49,7 @@ func reverseSlice[T any](s *[]T) {
 	}
 }
 
+// TODO: Mkdir creates a dir in current dir only, It should accept path to create a dir (abs path , relative path)
 func (f *Node) Mkdir(name string) (bool, error) {
 	if f != nil {
 		_, ok := f.index[name]
@@ -65,6 +66,7 @@ func (f *Node) Mkdir(name string) (bool, error) {
 	}
 }
 
+// TODO: Ls works for current dir, should accept path (abs path , relative path) to query children, may be supported flags as well ?
 func (f *Node) Ls() []string {
 	dirs := make([]string, 0, len(f.children))
 	for _, x := range f.children {
@@ -78,12 +80,13 @@ func (f *Node) Ls() []string {
 	return dirs
 }
 
+// TODO: Invalid paths should throw proper error, add validations for input path
+// TODO: should support abs path as well
 func (f *Node) Cd(path string) *Node {
 	orginalPwd := f
 	subPaths := strings.FieldsFunc(path, func(c rune) bool { return c == '/' })
 	for _, p := range subPaths {
 		if p == "." {
-			f = f
 			continue
 		} else if p == ".." {
 			// go to parent

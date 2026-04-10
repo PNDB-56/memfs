@@ -110,3 +110,52 @@ func (f *Node) Cd(path string) *Node {
 	}
 	return f
 }
+
+func (f *Node) Stat(root *Node, path string) (exists bool, parent *Node, node *Node, err error) {
+	exists = false
+	parent = nil
+	node = nil
+	err = nil
+	if f == nil {
+		err = errors.New("current context is nil")
+		return
+	}
+	pathArr := strings.FieldsFunc(path, func(c rune) bool { return c == '/' })
+	fmt.Println(pathArr)
+	if len(pathArr) == 0 {
+		err = errors.New("stat path can't be empty")
+		return
+	}
+	startNode := f
+	for _, x := range pathArr {
+		switch x {
+		case ".":
+			startNode = f
+		case "..":
+			if f.parent == nil {
+				err = fmt.Errorf("Invalid path at %s in %q", x, path)
+				return
+			}
+			startNode = f.parent
+		case "root":
+			startNode = root
+		default:
+			if childNode, ok := startNode.index[x]; ok {
+				startNode = childNode
+			} else {
+				err = fmt.Errorf("Invalid path at %s in %q", x, path)
+				return
+			}
+		}
+
+	}
+	parent = startNode.parent
+	node = startNode
+	exists = true
+	return
+}
+
+// TODO: add validations to fromPath, toPath
+// func (f *Node) Move(root *Node, fromPath string, toPath string) (bool, error) {
+
+// }

@@ -65,3 +65,19 @@ func TestLs(t *testing.T) {
 		t.Error(t.Name(), ": dir \"d\" is missing in /root/b")
 	}
 }
+
+func TestStat(t *testing.T) {
+	root := setupRoot()
+	root.Mkdir("A")
+	root.Cd("./A").Mkdir("B")
+	root.Cd("./A/B").Mkdir("C")
+	exists, parent, curr, err := root.Stat(root, ".//A/B/C")
+	if !exists || parent == nil || curr == nil || err != nil {
+		t.Error(t.Name(), ": Stat failed - C exists")
+	}
+
+	exists, parent, curr, err = root.Stat(root, ".//A/B/D")
+	if exists || parent != nil || curr != nil || err == nil {
+		t.Error(t.Name(), ": Stat failed - D doens't exist")
+	}
+}

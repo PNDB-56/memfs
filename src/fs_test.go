@@ -5,19 +5,15 @@ import (
 	"testing"
 )
 
-func setupRoot() *Node {
-	r := NewRoot()
-	return &r
-}
 func TestPwd_Root(t *testing.T) {
-	root := setupRoot()
+	root := NewRoot()
 	if root.Pwd() != "/root" {
 		t.Error(t.Name(), ": Root folder initialization failed")
 	}
 }
 
 func TestPwd_Nested(t *testing.T) {
-	root := setupRoot()
+	root := NewRoot()
 	dirA := &Node{isRoot: false, kind: "dir", name: "a", children: make([]*Node, 0), parent: root, index: make(map[string]*Node)}
 	root.children = append(root.children, dirA)
 	root.index["a"] = dirA
@@ -36,7 +32,7 @@ func TestPwd_Nested(t *testing.T) {
 }
 
 func TestLs(t *testing.T) {
-	root := setupRoot()
+	root := NewRoot()
 	dirA := &Node{isRoot: false, kind: "dir", name: "a", children: make([]*Node, 0), parent: root, index: make(map[string]*Node)}
 	dirB := &Node{isRoot: false, kind: "dir", name: "b", children: make([]*Node, 0), parent: root, index: make(map[string]*Node)}
 	dirC := &Node{isRoot: false, kind: "dir", name: "c", children: make([]*Node, 0), parent: dirA, index: make(map[string]*Node)}
@@ -67,7 +63,7 @@ func TestLs(t *testing.T) {
 }
 
 func TestStat(t *testing.T) {
-	root := setupRoot()
+	root := NewRoot()
 	root.Mkdir("A")
 	root.Cd("./A").Mkdir("B")
 	root.Cd("./A/B").Mkdir("C")
@@ -79,5 +75,21 @@ func TestStat(t *testing.T) {
 	exists, parent, curr, err = root.Stat(root, ".//A/B/D")
 	if exists || parent != nil || curr != nil || err == nil {
 		t.Error(t.Name(), ": Stat failed - D doens't exist")
+	}
+}
+
+func TestTouch(t *testing.T) {
+	root := NewRoot()
+	err := root.Touch("a.txt")
+	if err != nil {
+		t.Error(t.Name(), ": Touch failed - Unable to create a file")
+	}
+	ls := root.Ls()
+	if ls[0] != "a.txt" {
+		t.Error(t.Name(), ": Touch failed - a.txt doesn't exist")
+	}
+	err = root.Touch("a.txt")
+	if err == nil || err.Error() != "File already exists" {
+		t.Error(t.Name(), ": Failed to prevent duplicate file creation")
 	}
 }

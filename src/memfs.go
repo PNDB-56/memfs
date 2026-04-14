@@ -3,8 +3,7 @@ package main
 import "fmt"
 
 func main() {
-	root := NewRoot()
-	pwd := &root
+	pwd := NewRoot()
 	log(pwd.Pwd())
 	pwd.Mkdir("test1")
 	log(pwd.Ls())

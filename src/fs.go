@@ -3,8 +3,18 @@ package main
 import (
 	"errors"
 	"fmt"
+	"path"
+	"slices"
 	"strings"
+	"time"
 )
+
+type File struct {
+	fileName   string
+	createdAt  time.Time
+	modifiedAt time.Time
+	data       []byte
+}
 
 type Node struct {
 	isRoot   bool
@@ -13,10 +23,11 @@ type Node struct {
 	children []*Node
 	index    map[string]*Node
 	parent   *Node
+	file     *File
 }
 
-func NewRoot() Node {
-	return Node{
+func NewRoot() *Node {
+	return &Node{
 		isRoot:   true,
 		kind:     "dir",
 		name:     "root",
@@ -34,37 +45,24 @@ func (f *Node) Pwd() string {
 		f1 = f1.parent
 	}
 	fullPath = append(fullPath, "/root")
-	// fmt.Println(fullPath)
-	reverseSlice(&fullPath)
-	// fmt.Println(fullPath)
+	slices.Reverse(fullPath)
 	return strings.Join(fullPath, "/")
-}
-
-func reverseSlice[T any](s *[]T) {
-	n := len(*s)
-	for i := n - 1; i >= n/2; i -= 1 {
-		t := (*s)[i]
-		(*s)[i] = (*s)[n-1-i]
-		(*s)[n-1-i] = t
-	}
 }
 
 // TODO: Mkdir creates a dir in current dir only, It should accept path to create a dir (abs path , relative path)
 // TODO: optimization of childer array to binary tree or trie for easy search
 func (f *Node) Mkdir(name string) (bool, error) {
-	if f != nil {
-		_, ok := f.index[name]
-		if !ok {
-			node := Node{isRoot: false, kind: "dir", name: name, children: make([]*Node, 0), parent: f, index: make(map[string]*Node)}
-			f.children = append(f.children, &node)
-			f.index[name] = &node
-			return true, nil
-		} else {
-			return false, errors.New("Dir already exists")
-		}
-	} else {
+	if f == nil {
 		return false, errors.New("current context is nil")
 	}
+	_, ok := f.index[name]
+	if ok {
+		return false, errors.New("Dir already exists")
+	}
+	node := Node{isRoot: false, kind: "dir", name: name, children: make([]*Node, 0), parent: f, index: make(map[string]*Node)}
+	f.children = append(f.children, &node)
+	f.index[name] = &node
+	return true, nil
 }
 
 // TODO: Ls works for current dir, should accept path (abs path , relative path) to query children, may be supported flags as well ?
@@ -83,27 +81,29 @@ func (f *Node) Ls() []string {
 
 // TODO: Invalid paths should throw proper error, add validations for input path
 // TODO: should support abs path as well
-func (f *Node) Cd(path string) *Node {
+func (f *Node) Cd(p string) *Node {
 	orginalPwd := f
-	subPaths := strings.FieldsFunc(path, func(c rune) bool { return c == '/' })
-	for _, p := range subPaths {
-		if p == "." {
+	cleanedPath := path.Clean(p)
+	// fmt.Println(cleanedPath, p)
+	subPaths := strings.FieldsFunc(cleanedPath, func(c rune) bool { return c == '/' })
+	for _, p1 := range subPaths {
+		if p1 == "." {
 			continue
-		} else if p == ".." {
+		} else if p1 == ".." {
 			// go to parent
 			if f.parent != nil {
 				f = f.parent
 			} else {
 				// TODO: improve Error
-				fmt.Printf("Parent Path: %s doesn't exist in %s\n", p, path)
+				fmt.Printf("Parent Path: %s doesn't exist in %s\n", p1, p)
 				return orginalPwd
 			}
 		} else {
-			if addr, ok := f.index[p]; ok {
+			if addr, ok := f.index[p1]; ok {
 				f = addr
 			} else {
 				// TODO: improve Error
-				fmt.Printf("Child Path: %s doesn't exist in %s\n", p, path)
+				fmt.Printf("Child Path: %s doesn't exist in %s\n", p1, p)
 				return orginalPwd
 			}
 		}
@@ -121,7 +121,7 @@ func (f *Node) Stat(root *Node, path string) (exists bool, parent *Node, node *N
 		return
 	}
 	pathArr := strings.FieldsFunc(path, func(c rune) bool { return c == '/' })
-	fmt.Println(pathArr)
+	// fmt.Println(pathArr)
 	if len(pathArr) == 0 {
 		err = errors.New("stat path can't be empty")
 		return
@@ -159,3 +159,29 @@ func (f *Node) Stat(root *Node, path string) (exists bool, parent *Node, node *N
 // func (f *Node) Move(root *Node, fromPath string, toPath string) (bool, error) {
 
 // }
+
+// TODO: add path validations for name, eg: ./a.txt = a.txt and support relative and abs paths in name
+func (f *Node) Touch(name string) error {
+	if f == nil {
+		return errors.New("current context is nil")
+	}
+	_, ok := f.index[name]
+	if ok {
+		return errors.New("File already exists")
+	}
+	node := Node{
+		isRoot:   false,
+		kind:     "file",
+		name:     name,
+		children: nil,
+		parent:   f,
+		index:    nil,
+		file: &File{
+			fileName:   name,
+			createdAt:  time.Now(),
+			modifiedAt: time.Now(),
+			data:       make([]byte, 0, 100)}}
+	f.children = append(f.children, &node)
+	f.index[name] = &node
+	return nil
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"slices"
 	"testing"
 )
@@ -91,5 +92,85 @@ func TestTouch(t *testing.T) {
 	err = root.Touch("a.txt")
 	if err == nil || err.Error() != "File already exists" {
 		t.Error(t.Name(), ": Failed to prevent duplicate file creation")
+	}
+}
+
+func TestWrite(t *testing.T) {
+	root := NewRoot()
+	err := root.Touch("a.txt")
+	if err != nil {
+		t.Error(t.Name(), err.Error())
+	}
+	fileContent := "abcd"
+	bytesWritten, err := root.index["a.txt"].file.Write([]byte(fileContent))
+	if err != nil {
+		t.Error(t.Name(), err.Error())
+	}
+	if bytesWritten != len(fileContent) {
+		t.Error(t.Name(), ": Written bytes size mismatch")
+	}
+	by := byte('a')
+	// root.index["a.txt"].file.data[1] = 'e'
+	// root.index["a.txt"].file.data[2] = 'e'
+	// root.index["a.txt"].file.data[3] = 'e'
+	for index, x := range root.index["a.txt"].file.data {
+		if x != by {
+			t.Errorf("%s : Expected byte %d at index %d, but found %d", t.Name(), by, index, x)
+		}
+		by += 1
+	}
+}
+
+func TestRead(t *testing.T) {
+	root := NewRoot()
+	err := root.Touch("a.txt")
+	if err != nil {
+		t.Error(t.Name(), err.Error())
+	}
+	fileContent := "abcdefghijkl"
+	bytesWritten, err := root.index["a.txt"].file.Write([]byte(fileContent))
+	if err != nil {
+		t.Error(t.Name(), err.Error())
+	}
+	if bytesWritten != len(fileContent) {
+		t.Error(t.Name(), ": Mock write - Written bytes size mismatch")
+	}
+	read5 := make([]byte, 5)
+
+	readBytes, err := root.index["a.txt"].file.Read(read5)
+	if err != nil && err != io.EOF {
+		t.Error(t.Name(), err.Error())
+	}
+	if readBytes != 5 {
+		t.Error(t.Name(), ": Expected to read 5 bytes but read:", readBytes, "bytes")
+	}
+
+	by := byte('a')
+	for index, x := range read5 {
+		if x != by {
+			t.Errorf("%s : Expected to read byte %d at index %d but found byte %d", t.Name(), by, index, x)
+		}
+		by += 1
+	}
+
+	read12 := make([]byte, 12)
+	// root.index["a.txt"].file.data[1] = 'e'
+	// root.index["a.txt"].file.data[2] = 'e'
+	// root.index["a.txt"].file.data[3] = 'f'
+	readBytes, err = root.index["a.txt"].file.Read(read12)
+	// fmt.Println(readBytes, err)
+	if err != nil && err != io.EOF {
+		t.Error(t.Name(), err.Error())
+	}
+	if readBytes != 12 {
+		t.Error(t.Name(), ": Expected to read 12 bytes but read:", readBytes, "bytes")
+	}
+
+	by = byte('a')
+	for index, x := range read12 {
+		if x != by {
+			t.Errorf("%s : Expected to read byte %d at index %d but found byte %d", t.Name(), by, index, x)
+		}
+		by += 1
 	}
 }

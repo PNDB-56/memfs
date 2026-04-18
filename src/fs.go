@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"path"
 	"slices"
 	"strings"
@@ -14,6 +15,7 @@ type File struct {
 	createdAt  time.Time
 	modifiedAt time.Time
 	data       []byte
+	open       bool
 }
 
 type Node struct {
@@ -81,6 +83,7 @@ func (f *Node) Ls() []string {
 
 // TODO: Invalid paths should throw proper error, add validations for input path
 // TODO: should support abs path as well
+// TODO: if cd is given for file name instead of DIr throw err
 func (f *Node) Cd(p string) *Node {
 	orginalPwd := f
 	cleanedPath := path.Clean(p)
@@ -180,8 +183,58 @@ func (f *Node) Touch(name string) error {
 			fileName:   name,
 			createdAt:  time.Now(),
 			modifiedAt: time.Now(),
-			data:       make([]byte, 0, 100)}}
+			data:       make([]byte, 0, 100),
+			open:       false}}
 	f.children = append(f.children, &node)
 	f.index[name] = &node
 	return nil
+}
+
+func (f *File) Open() error {
+	if f.open {
+		return errors.New("File is already open")
+	}
+	f.open = true
+	return nil
+}
+
+func (f *File) Close() error {
+	if f.open {
+		f.open = false
+		return nil
+	}
+	return errors.New("File is already closed")
+}
+
+// TODO: Come up with some ways to implement open close methods
+// TODO: SOME mechanism to remember curson if full data is not read
+func (f *File) Read(p []byte) (n int, err error) {
+	destLength := len(p)
+	sourceLength := len(f.data)
+	n = 0
+	for n < sourceLength {
+		if n < destLength {
+			p[n] = f.data[n]
+		} else {
+			return
+		}
+		n += 1
+	}
+	err = io.EOF
+	return
+}
+
+// TODO: write modes, append / fresh write
+// Write will override for now
+func (f *File) Write(p []byte) (n int, err error) {
+	n = len(p)
+	f.data = make([]byte, n)
+	err = nil
+	// f.data = append(f.data, p...)
+	copy(f.data, p)
+	return
+}
+
+func (f *Node) Write(filePath string, data string) {
+
 }

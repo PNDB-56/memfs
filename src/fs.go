@@ -28,6 +28,55 @@ type Node struct {
 	file     *File
 }
 
+var INVALID_COMPONENT_CHARS = []rune{
+	'~', '!', '@', '#', '$', '%', '^', '&', '*', '\\', ';', '<', '>', ':', '{', '}', '[', ']', '\'', '|', '"',
+}
+
+func validateName(name string) error {
+	if len(name) == 0 {
+		return errors.New("name cannot be empty")
+	}
+	if len(name) > 255 {
+		return errors.New("name exceeds maximum length of 255 characters")
+	}
+	if name == "." || name == ".." {
+		return errors.New("name cannot be '.' or '..'")
+	}
+	for _, r := range name {
+		if r == '/' {
+			return errors.New("name cannot contain path separator '/'")
+		}
+		if r < 32 || r == 127 {
+			return errors.New("name cannot contain control characters")
+		}
+		for _, inv := range INVALID_COMPONENT_CHARS {
+			if r == inv {
+				return fmt.Errorf("name contains invalid character '%c'", r)
+			}
+		}
+	}
+	return nil
+}
+
+func validatePath(p string) error {
+	if len(p) == 0 {
+		return errors.New("path cannot be empty")
+	}
+	components := strings.Split(p, "/")
+	for _, comp := range components {
+		if comp == "" {
+			continue
+		}
+		if comp == "." || comp == ".." {
+			continue
+		}
+		if err := validateName(comp); err != nil {
+			return fmt.Errorf("invalid path component %q: %w", comp, err)
+		}
+	}
+	return nil
+}
+
 func NewRoot() *Node {
 	return &Node{
 		isRoot:   true,
@@ -57,6 +106,9 @@ func (f *Node) Mkdir(name string) (bool, error) {
 	if f == nil {
 		return false, errors.New("current context is nil")
 	}
+	if err := validateName(name); err != nil {
+		return false, err
+	}
 	_, ok := f.index[name]
 	if ok {
 		return false, errors.New("Dir already exists")
@@ -81,10 +133,13 @@ func (f *Node) Ls() []string {
 	return dirs
 }
 
-// TODO: Invalid paths should throw proper error, add validations for input path
 // TODO: should support abs path as well
 // TODO: if cd is given for file name instead of DIr throw err
 func (f *Node) Cd(p string) *Node {
+	if err := validatePath(p); err != nil {
+		fmt.Printf("Invalid path: %v\n", err)
+		return f
+	}
 	orginalPwd := f
 	cleanedPath := path.Clean(p)
 	// fmt.Println(cleanedPath, p)
@@ -121,6 +176,9 @@ func (f *Node) Stat(root *Node, path string) (exists bool, parent *Node, node *N
 	err = nil
 	if f == nil {
 		err = errors.New("current context is nil")
+		return
+	}
+	if err = validatePath(path); err != nil {
 		return
 	}
 	pathArr := strings.FieldsFunc(path, func(c rune) bool { return c == '/' })
@@ -168,6 +226,9 @@ func (f *Node) Touch(name string) error {
 	if f == nil {
 		return errors.New("current context is nil")
 	}
+	if err := validateName(name); err != nil {
+		return err
+	}
 	_, ok := f.index[name]
 	if ok {
 		return errors.New("File already exists")
@@ -207,7 +268,7 @@ func (f *File) Close() error {
 }
 
 // TODO: Come up with some ways to implement open close methods
-// TODO: SOME mechanism to remember curson if full data is not read
+// TODO: SOME mechanism to remember cursor if full data is not read
 func (f *File) Read(p []byte) (n int, err error) {
 	destLength := len(p)
 	sourceLength := len(f.data)

@@ -174,3 +174,67 @@ func TestRead(t *testing.T) {
 		by += 1
 	}
 }
+
+func TestValidateName(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"valid simple", "a", false},
+		{"valid file", "a.txt", false},
+		{"valid hyphen underscore", "hello_world-123", false},
+		{"invalid empty", "", true},
+		{"invalid dot", ".", true},
+		{"invalid dotdot", "..", true},
+		{"invalid slash", "a/b", true},
+		{"invalid char tilde", "a~b", true},
+		{"invalid char hash", "a#b", true},
+		{"invalid char asterisk", "a*b", true},
+		{"invalid char backslash", "a\\b", true},
+		{"invalid char semicolon", "a;b", true},
+		{"invalid char quote", "a\"b", true},
+		{"invalid too long", string(make([]byte, 256)), true},
+		{"invalid control char", "a\x01b", true},
+		{"invalid del char", "a\x7fb", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateName(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateName(%q) error = %v, wantErr = %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidatePath(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"valid root slash", "/", false},
+		{"valid relative simple", "a/b", false},
+		{"valid absolute simple", "/a/b", false},
+		{"valid trailing slash", "/a/b/", false},
+		{"valid navigation dot", "a/./b", false},
+		{"valid navigation dotdot", "a/../b", false},
+		{"valid double slash", "a//b", false},
+		{"invalid empty", "", true},
+		{"invalid component hash", "a/b#c/d", true},
+		{"invalid component semicolon", "/a//b/x/../y/z;1", true},
+		{"invalid component asterisk", "/a/../b*c", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePath(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validatePath(%q) error = %v, wantErr = %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
